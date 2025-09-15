@@ -85,6 +85,22 @@ class ImitationBot(commands.Bot):
 
         print("Commands registered manually")
 
+        @self.command(name='askai')
+        async def ask_ai_command(ctx, *, question=None):
+            """Ask the AI any question directly"""
+            if not question:
+                await ctx.send("Usage: `!askai your question`")
+                return
+            if not self.ai_handler:
+                await ctx.send("AI handler not available.")
+                return
+            await ctx.send("Thinking...")
+            try:
+                response = await self.ai_handler.get_response(question)
+                await ctx.send(response or "AI did not return a response.")
+            except Exception as e:
+                await ctx.send(f"AI error: {e}")
+
     async def on_ready(self):
         print(f'{self.user} has connected to Discord!')
         print(f'Registered commands: {[cmd.name for cmd in self.commands]}')

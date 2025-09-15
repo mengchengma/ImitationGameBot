@@ -14,7 +14,6 @@ class ai:
         - Use casual, conversational language
         - Make occasional typos or informal grammar
         - Keep responses short (1-3 sentences)
-        - Sometimes use filler words like "um", "uh", "like"
         - Show personality and opinions
 
         You're a 22-year-old college student studying computer science.
@@ -30,9 +29,6 @@ class ai:
             # Add human-like touches
             if random.random() < 0.3:
                 text = text.lower()
-            if random.random() < 0.2:
-                fillers = ["um, ", "uh, ", "like, "]
-                text = random.choice(fillers) + text
 
             return text
 
