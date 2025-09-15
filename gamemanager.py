@@ -12,14 +12,17 @@ class GameSession:
         self.human_player = None
 
 
-class GameManager:
+class gamemanager:
     def __init__(self, bot):
         self.bot = bot
         self.active_games = {}
         self.waiting_players = []
 
     async def add_player(self, ctx):
-        if ctx.author not in self.waiting_players:
+        # Check by user ID instead of user object
+        player_ids = [player.id for player in self.waiting_players]
+
+        if ctx.author.id not in player_ids:
             self.waiting_players.append(ctx.author)
             await ctx.send(f"{ctx.author.mention} added to queue. Players waiting: {len(self.waiting_players)}")
         else:
@@ -74,7 +77,7 @@ class GameManager:
 
         session = self.active_games[ctx.channel.id]
 
-        if ctx.author != session.interrogator:
+        if ctx.author.id != session.interrogator.id:
             await ctx.send("Only the interrogator can ask questions!")
             return
 
@@ -103,7 +106,7 @@ class GameManager:
     async def handle_dm_response(self, message):
         # Find which game this human is part of
         for session in self.active_games.values():
-            if message.author == session.human_player:
+            if message.author.id == session.human_player.id:
                 label = 'A' if session.players['a'] == message.author else 'B'
                 await self.send_response(session, label, message.content)
                 return True

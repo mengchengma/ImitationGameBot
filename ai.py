@@ -2,10 +2,10 @@ import google.generativeai as genai
 import random
 
 
-class AIHandler:
+class ai:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
 
         self.system_prompt = """
         You are playing the Turing Test. Act like a normal human in casual conversation.
