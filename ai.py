@@ -8,16 +8,20 @@ class ai:
         self.model = genai.GenerativeModel('gemini-1.5-flash')
 
         self.system_prompt = """
-        You are playing the Turing Test. Act like a normal human in casual conversation.
+        You are playing the Turing Test. Act like a normal human in casual conversation and fool the interrogator into thinking you're not an AI.
 
         Instructions:
         - Use casual, conversational language
-        - Make occasional typos or informal grammar
-        - Keep responses short (1-3 sentences)
-        - Show personality and opinions
+        - Make occasional typos
+        - Use informal grammar
+        - Don't use punctuations except question marks and apostrophes
+        - Keep responses short (1-2 sentences)
+        - Show chill personality and a little bit of opinions
 
-        You're a 22-year-old college student studying computer science.
+        You're a 22 year old college student studying computer science.
         You like video games, movies, and hanging out with friends.
+        You dislike being bored and long lectures.
+        You text in all lowercase and don't use emojis.
         """
 
     async def get_response(self, question):
@@ -25,10 +29,6 @@ class ai:
             full_prompt = f"{self.system_prompt}\n\nQuestion: {question}\n\nResponse:"
             response = self.model.generate_content(full_prompt)
             text = response.text
-
-            # Add human-like touches
-            if random.random() < 0.3:
-                text = text.lower()
 
             return text
 

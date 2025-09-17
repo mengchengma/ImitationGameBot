@@ -10,6 +10,8 @@ class GameSession:
         self.players = {}
         self.game_active = False
         self.human_player = None
+        self.questions_asked = 0
+        self.max_questions = 6
 
 
 class gamemanager:
@@ -34,8 +36,11 @@ class gamemanager:
             return
 
         interrogator = ctx.author
-        human_player = self.waiting_players.pop(0)
 
+        if interrogator in self.waiting_players:
+            self.waiting_players.remove(interrogator)
+
+        human_player = self.waiting_players.pop(0)
         session = GameSession(ctx.channel, interrogator)
         session.human_player = human_player
 
@@ -51,18 +56,11 @@ class gamemanager:
         await self.send_instructions(session)
 
     async def send_instructions(self, session):
-        embed = discord.Embed(
-            title="🤖 Turing Test Started!",
-            description="One of Player A or Player B is an AI. Ask questions to figure out which!",
-            color=0x00ff00
-        )
-        embed.add_field(name="How to play:", value="Type `!ask a your question` or `!ask b your question`",
-                        inline=False)
-        await session.channel.send(embed=embed)
+        await session.channel.send("**Game Started!** One of Player A or Player B is an AI. Ask questions to figure out which!\n\n**How to play:** Type `!ask a your question` or `!ask b your question`\nYou have 6 questions, then use `!guess a` or `!guess b`")
 
         # DM instructions
         await session.interrogator.send(
-            "You are the **Interrogator**. Use `!ask a question` or `!ask b question` to ask questions.")
+            "You are the **Interrogator**. Use `!ask a question` or `!ask b question` to ask questions.\nAfter 6 questions, use `!guess a` or `!guess b` to make your final choice!")
 
         # Find human player label
         human_label = 'A' if session.players['a'] != 'AI' else 'B'
@@ -71,20 +69,23 @@ class gamemanager:
         session.game_active = True
 
     async def handle_question(self, ctx, player, question):
-        if ctx.channel.id not in self.active_games:
-            await ctx.send("No active game in this channel!")
-            return
-
         session = self.active_games[ctx.channel.id]
 
         if ctx.author.id != session.interrogator.id:
             await ctx.send("Only the interrogator can ask questions!")
             return
 
+        if session.questions_asked >= session.max_questions:
+            await ctx.send(f"You've already asked {session.max_questions} questions! Use `!guess a` or `!guess b` to make your final choice!")
+            return
+
         player = player.lower()
         if player not in ['a', 'b']:
             await ctx.send("Use `!ask a question` or `!ask b question`")
             return
+
+        session.questions_asked += 1
+        remaining = session.max_questions - session.questions_asked
 
         target = session.players[player]
 
@@ -96,12 +97,73 @@ class gamemanager:
             # Human response
             await target.send(f"**Question:** {question}\nReply to this DM with your answer!")
 
+        if remaining > 0:
+            await ctx.send(f"Questions remaining: {remaining}")
+        else:
+            await ctx.send("That was your final question! Use `!guess a` or `!guess b` to make your choice!")
+
     async def send_response(self, session, player_label, response):
         # Add delay to seem more human
-        delay = random.uniform(2.0, 6.0)
+        delay = random.uniform(2.0, 4.0)
         await asyncio.sleep(delay)
 
         await session.channel.send(f"**Player {player_label}:** {response}")
+
+    async def handle_guess(self, ctx, guess):
+        if ctx.channel.id not in self.active_games:
+            await ctx.send("No active game in this channel!")
+            return
+
+        session = self.active_games[ctx.channel.id]
+
+        if ctx.author.id != session.interrogator.id:
+            await ctx.send("Only the interrogator can make the guess!")
+            return
+
+        if session.questions_asked < session.max_questions:
+            await ctx.send(f"You still have {session.max_questions - session.questions_asked} questions left! Ask more or use `!guess` anyway.")
+
+        guess = guess.lower()
+        if guess not in ['a', 'b']:
+            await ctx.send("Use `!guess a` or `!guess b`")
+            return
+
+        # Determine who was the AI
+        ai_player = 'a' if session.players['a'] == 'AI' else 'b'
+        human_player = 'a' if ai_player == 'b' else 'b'
+
+        # Create result message
+        if guess == ai_player:
+            result_msg = f"**Correct!** Player {guess.upper()} was indeed the AI!"
+        else:
+            result_msg = f"**Wrong!** Player {guess.upper()} was human. Player {ai_player.upper()} was the AI!"
+
+        result_msg += f"\n\n**Results:**\nPlayer {ai_player.upper()}: AI\nPlayer {human_player.upper()}: {session.human_player.mention}\n"
+
+        await ctx.send(result_msg)
+
+        # End the game
+        del self.active_games[ctx.channel.id]
+
+    async def end_game(self, ctx):
+        if ctx.channel.id not in self.active_games:
+            await ctx.send("No active game in this channel!")
+            return
+
+        session = self.active_games[ctx.channel.id]
+
+        if ctx.author.id != session.interrogator.id:
+            await ctx.send("Only the interrogator can end the game!")
+            return
+
+        # Reveal the answer
+        ai_player = 'a' if session.players['a'] == 'AI' else 'b'
+        human_player = 'a' if ai_player == 'b' else 'b'
+
+        end_msg = f"**Game Ended**\nThe game was ended early.\n\n**Reveal:**\nPlayer {ai_player.upper()}: AI\nPlayer {human_player.upper()}: {session.human_player.mention}\n**Questions asked:** {session.questions_asked}/{session.max_questions}"
+
+        await ctx.send(end_msg)
+        del self.active_games[ctx.channel.id]
 
     async def handle_dm_response(self, message):
         # Find which game this human is part of
