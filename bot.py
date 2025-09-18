@@ -32,15 +32,32 @@ class ImitationBot(commands.Bot):
                 await ctx.send("Error")
 
         @self.command(name='ask')
-        async def ask_question(ctx, player=None, *, question=None):
-            """Ask a question to player A or B"""
-            if not player or not question:
-                await ctx.send("Usage: `!ask a your question` or `!ask b your question`")
+        async def ask_question(ctx, *args):
+            """Ask a question to both players or a specific player.
+            Usage:
+              `!ask your question` -> asks both players
+              `!ask a your question` -> asks player A only
+              `!ask b your question` -> asks player B only
+            """
+            if len(args) == 0:
+                await ctx.send("Usage: `!ask your question` or `!ask a your question` / `!ask b your question`")
                 return
 
-            print(f"Ask command called by {ctx.author}: {player} - {question}")
+            # If first arg is 'a' or 'b', treat it as target
+            target = None
+            if args[0].lower() in ('a', 'b') and len(args) > 1:
+                target = args[0].lower()
+                question = ' '.join(args[1:]).strip()
+            else:
+                question = ' '.join(args).strip()
+
+            if not question:
+                await ctx.send("Please provide a question to ask.")
+                return
+
+            print(f"Ask command called by {ctx.author}: target={target} - {question}")
             if self.game_manager:
-                await self.game_manager.handle_question(ctx, player, question)
+                await self.game_manager.handle_question(ctx, target, question)
             else:
                 await ctx.send("Error")
 
